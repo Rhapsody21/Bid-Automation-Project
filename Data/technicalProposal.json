@@ -1,0 +1,34 @@
+{ "doc_metadata": [{
+    "service": "Design and supervison of rehabilitation and refurbishment works",
+    "year": 2009,
+    "country": "Ghana" 
+}, {
+    "service": "To form part of SALGAs built environment panel of experts",
+  "year": 2023,
+  "country": "South Africa"
+}, 
+{
+    "service": "To form part of SALGAs built environment panel of experts",
+    "year": 2023,
+    "country": "South Africa"  
+},
+{
+    "service": "Design and construction supervision",
+    "project_type": "building",
+    "year": 2013,
+    "country": "Ghana"
+  } ,
+
+  {
+    "service": "construction supervison and procurement of goods",
+    "project_type": "building and goods procurement",
+    "year": 2012,
+    "country": "Ghana"
+  },
+  {
+    "service": "Design and construction supervision of 500-bed capacity hostel",
+    "project_type": "building",
+    "year": 2007,
+    "country": "Ghana"
+  }
+]}
