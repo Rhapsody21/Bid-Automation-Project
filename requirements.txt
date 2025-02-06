@@ -1,0 +1,8 @@
+openai
+langchain
+pypdf
+numpy
+pinecone_client
+
+
+
