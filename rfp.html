@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFP Analyzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-5">
+    <h2 class="mb-4">Upload RFP PDF for Analysis</h2>
+    <form id="upload-form" enctype="multipart/form-data">
+        <input type="file" id="file-input" class="form-control mb-3" accept="application/pdf" required>
+        <button type="submit" class="btn btn-primary">Upload & Analyze</button>
+    </form>
+    
+    <div id="result" class="mt-4"></div>
+    
+    <script>
+        document.getElementById("upload-form").addEventListener("submit", async function(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById("file-input");
+            if (!fileInput.files.length) return alert("Please select a PDF file.");
+            
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            
+            document.getElementById("result").innerHTML = "<p>Processing...</p>";
+            
+            try {
+                const response = await fetch("http://127.0.0.1:5000/upload", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json();
+                document.getElementById("result").innerHTML = `<pre>${JSON.stringify(data.rfp_summary, null, 2)}</pre>`;
+            } catch (error) {
+                document.getElementById("result").innerHTML = `<p class='text-danger'>Error analyzing the file.</p>`;
+            }
+        });
+    </script>
+</body>
+</html>

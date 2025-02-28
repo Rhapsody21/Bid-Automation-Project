@@ -1,8 +1,11 @@
-openai
-langchain
-pypdf
-numpy
-pinecone_client
+# openai
+# langchain
+# pypdf
+# numpy
+# pinecone_client
+fitz
+pytesseract
+pdf2image
 
 
 
