@@ -20,7 +20,7 @@ st.set_page_config(page_title="My App", layout="wide")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
 
-st.title("RFP Key Phrase Extractor")
+st.title("Requirements Extractor")
 
 # Function to extract key words using OpenAI API
 def extract_key_words(rfp_content):
@@ -66,6 +66,7 @@ def extract_text_from_pdf(pdf_path):
     for page in doc:
         text += page.get_text("text") + "\n\n"
     return text
+
 
 def search_similar_technical_proposal(query):
     """
@@ -129,39 +130,164 @@ def search_similar_technical_proposal(query):
     
     return result_texts
 
-uploaded_file = st.file_uploader("Upload RFP file", type=["pdf"])
+def generate_proposal(rfp_content, key_phrases, similar_proposals):
+    """
+    Generate a new proposal based on the RFP content, extracted key phrases, and similar proposals.
+    
+    Args:
+        rfp_content (str): The full text of the uploaded RFP
+        key_phrases (str): Extracted key phrases from the RFP
+        similar_proposals (list): List of tuples containing (filename, score, content) for similar proposals
+    
+    Returns:
+        str: Generated proposal content
+    """
+    try:
+        api_key = OPENAI_API_KEY
+        if api_key is None:
+            raise ValueError("API Key is missing")
 
-if uploaded_file is not None:
-    # Save the uploaded file to a temporary location
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
-        temp_file.write(uploaded_file.read())
-        temp_file_path = temp_file.name
-
-    st.write("File uploaded successfully")
-
-    # Extract text from the saved PDF file
-    rfp_text = extract_text_from_pdf(temp_file_path)
-
-    # Display RFP content
-    st.write("RFP Content:")
-    st.text_area("RFP Content", rfp_text, height=300)
-
-    # Extract key phrases from the RFP content
-    st.write("Extracting Key Phrases...")
-    key_phrases = extract_key_words(rfp_text)
-
-    if key_phrases:
-        st.write("Extracted Key Phrases:")
-        st.text_area("Extracted Key Phrases", key_phrases, height=300)
+        openai.api_key = api_key
         
-        st.subheader("Top Three Most Similar Technical Proposals")
-        similar_proposals = search_similar_technical_proposal(key_phrases)
+        # Prepare examples from similar proposals
+        examples_content = ""
+        for idx, (filename, score, content) in enumerate(similar_proposals, start=1):
+            examples_content += f"\n\nEXAMPLE PROPOSAL {idx} (Score: {score:.2f}):\n{content[:3000]}..."  # Limit size of each example
         
-        if isinstance(similar_proposals, str):
-            st.write(similar_proposals)
+        # Create the prompt
+        prompt = f"""
+        REQUEST FOR PROPOSAL (RFP):
+        {rfp_content}...
+        
+        KEY REQUIREMENTS EXTRACTED FROM RFP:
+        {key_phrases}
+        
+        SIMILAR SUCCESSFUL PROPOSALS FOR REFERENCE:
+        {examples_content}
+        
+        Based on the RFP and similar proposals, create a compelling and technically sound proposal that includes ONLY the following three sections:
+
+        1. COMMENTS AND SUGGESTIONS ON TERMS OF REFERENCE AND DATA, SERVICES AND FACILITIES TO BE PROVIDED BY THE EMPLOYER:
+        - Provide insightful comments on the Terms of Reference (TOR) that demonstrate deep understanding of the project needs
+        - Identify potential gaps or areas for improvement in the TOR
+        - Suggest practical enhancements to the scope or approach that would add value
+        - Discuss what additional data might be needed and why
+        - Specify what services and facilities you would require from the employer to deliver successfully
+        - Show how your suggestions would improve project outcomes and efficiency
+
+        2. DESCRIPTION OF THE METHODOLOGY:
+        - Outline a comprehensive, innovative methodology tailored specifically to this project
+        - Explain your conceptual framework and technical approach
+        - Describe specific methods, tools, and technologies you would employ
+        - Explain how your methodology addresses the unique challenges of this project
+        - Demonstrate how your approach is superior to standard approaches
+        - Include diagrams or process flows if appropriate
+
+        3. WORK PLAN FOR PERFORMING THE ASSIGNMENT:
+        - Present a detailed, realistic timeline with key milestones and deliverables
+        - Break down the work into logical phases, tasks, and subtasks
+        - Allocate appropriate time for each activity
+        - Identify critical path items and dependencies
+        - Include quality control measures and review points
+        - Demonstrate efficient resource allocation and scheduling
+        - Show how your work plan ensures timely completion while maintaining quality
+
+        Your proposal should be practical, innovative, and convincing. Use industry best practices and 
+        demonstrate expertise in the subject matter. Be specific rather than generic, and avoid padding content
+        with unnecessary information. Focus on showing how your approach will solve the client's problems and
+        deliver superior results.
+        """
+        
+        # Call the API with a longer max_tokens value and higher temperature for creativity
+        response = openai.chat.completions.create(
+            model="gpt-4o",  # Using full GPT-4o for better quality
+            messages=[
+                {
+                    "role": "system",
+                    "content": ("You are an elite proposal writer and domain expert with 20+ years of experience winning competitive bids. "
+                               "Your task is to write three specific sections of a proposal that demonstrate superior expertise, "
+                               "innovative thinking, and a deep understanding of the client's needs. "
+                               "Your writing should be confident, technically precise, and compelling. "
+                               "Draw from your extensive experience to create content that stands out from competitors. "
+                               "Be specific, practical, and convincing rather than generic or theoretical. "
+                               "Focus on demonstrating value and addressing the client's pain points throughout your response.")
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            max_tokens=4000,
+            temperature=0.7
+        )
+        
+        return response.choices[0].message.content
+    except Exception as e:
+        st.error(f"Error during proposal generation: {e}")
+        return None
+
+def main():
+    uploaded_file = st.file_uploader("Upload RFP file", type=["pdf"])
+
+    if uploaded_file is not None:
+        # Save the uploaded file to a temporary location
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+            temp_file.write(uploaded_file.read())
+            temp_file_path = temp_file.name
+
+        st.write("File uploaded successfully")
+
+        # Extract text from the saved PDF file
+        rfp_text = extract_text_from_pdf(temp_file_path)
+
+        # Display RFP content
+        st.write("RFP Content:")
+        with st.expander("View RFP Content", expanded=False):
+            st.text_area("RFP Content", rfp_text, height=300)
+
+        # Extract key phrases from the RFP content
+        with st.spinner("Extracting Key Phrases..."):
+            key_phrases = extract_key_words(rfp_text)
+
+        if key_phrases:
+            st.write("Extracted Key Phrases:")
+            with st.expander("View Extracted Key Phrases", expanded=False):
+                st.text_area("Extracted Key Phrases", key_phrases, height=300)
+            
+            with st.spinner("Searching for similar proposals..."):
+                similar_proposals = search_similar_technical_proposal(key_phrases)
+            
+            st.subheader("Top Three Most Similar Technical Proposals")
+            
+            if isinstance(similar_proposals, str):
+                st.write(similar_proposals)
+                has_similar_proposals = False
+            else:
+                has_similar_proposals = True
+                with st.expander("View Similar Proposals", expanded=False):
+                    for idx, (filename, score, content) in enumerate(similar_proposals, start=1):
+                        st.subheader(f"Proposal {idx}: {filename} (Score: {score:.2f})")
+                        st.text_area(f"{filename}", content, height=300)
+            
+            # Add button to generate new proposal
+            if has_similar_proposals:
+                if st.button("Generate New Proposal"):
+                    with st.spinner("Generating proposal based on RFP and similar proposals... This may take a few minutes."):
+                        generated_proposal = generate_proposal(rfp_text, key_phrases, similar_proposals)
+                    
+                    if generated_proposal:
+                        st.subheader("Generated Proposal")
+                        st.text_area("Generated Proposal", generated_proposal, height=500)
+                        
+                        # Add a download button for the generated proposal
+                        st.download_button(
+                            label="Download Proposal as Text",
+                            data=generated_proposal,
+                            file_name="generated_proposal.txt",
+                            mime="text/plain"
+                        )
         else:
-            for idx, (filename, score, content) in enumerate(similar_proposals, start=1):
-                st.subheader(f"Proposal {idx}: {filename} (Score: {score:.2f})")
-                st.text_area(f"{filename}", content, height=300)
-    else:
-        st.write("No key phrases extracted.")
+            st.write("No key phrases extracted.")
+
+if __name__ == "__main__":
+    main()
