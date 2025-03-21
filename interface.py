@@ -8,6 +8,8 @@ load_dotenv()
 from pinecone import Pinecone as PineconeClient
 from langchain_openai import OpenAIEmbeddings
 from langchain.llms import OpenAI
+from docx import Document
+import io
 
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
@@ -21,6 +23,86 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
 
 st.title("Requirements Extractor")
+
+# Function to create a fullscreen text viewer with floating button
+def fullscreen_text_area(text, height=300, key=None):
+    # Generate unique keys if none provided
+    if key is None:
+        import random
+        import string
+        key = ''.join(random.choices(string.ascii_lowercase, k=10))
+    
+    viewer_id = f"doc-viewer-{key}"
+    btn_id = f"floating-fs-btn-{key}"
+    
+    # JavaScript for Full-Screen Mode with floating button
+    fullscreen_js = f"""
+    <script>
+        // Function to enter fullscreen
+        function openFullScreen_{key}() {{
+            var docViewer = document.getElementById("{viewer_id}");
+            if (docViewer.requestFullscreen) {{
+                docViewer.requestFullscreen();
+            }} else if (docViewer.mozRequestFullScreen) {{
+                docViewer.mozRequestFullScreen();
+            }} else if (docViewer.webkitRequestFullscreen) {{
+                docViewer.webkitRequestFullscreen();
+            }} else if (docViewer.msRequestFullscreen) {{
+                docViewer.msRequestFullscreen();
+            }}
+        }}
+
+        // Show/hide button when entering/exiting fullscreen
+        document.addEventListener("fullscreenchange", function() {{
+            if (!document.fullscreenElement) {{
+                document.getElementById("{btn_id}").style.display = "flex";
+            }} else {{
+                document.getElementById("{btn_id}").style.display = "none";
+            }}
+        }});
+    </script>
+    """
+    
+    # First create the regular text area
+    text_area = st.text_area(f"Content", text, height=height, key=key)
+    
+    # Now create the HTML structure with floating button for the same content
+    html = f"""
+    <div style="position: relative; width: 100%; margin-top: -45px; z-index: 1000;">
+        <div id="{viewer_id}" style="position: relative; width: 100%;">
+            <pre style="white-space: pre-wrap; word-wrap: break-word; display:none;">{text}</pre>
+        </div>
+        
+        <button id="{btn_id}" onclick="openFullScreen_{key}()" style="
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(0, 123, 255, 0.7);
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+        </button>
+    </div>
+    {fullscreen_js}
+    """
+    
+    # Inject the HTML
+    st.components.v1.html(html, height=0)
+    
+    return text_area
 
 # Function to extract key words using OpenAI API
 def extract_key_words(rfp_content):
@@ -152,50 +234,67 @@ def generate_proposal(rfp_content, key_phrases, similar_proposals):
         # Prepare examples from similar proposals
         examples_content = ""
         for idx, (filename, score, content) in enumerate(similar_proposals, start=1):
-            examples_content += f"\n\nEXAMPLE PROPOSAL {idx} (Score: {score:.2f}):\n{content[:3000]}..."  # Limit size of each example
+            examples_content += f"\n\nEXAMPLE PROPOSAL {idx} (Score: {score:.2f}):\n{content[:10000]}..."  # Limit size of each example
         
         # Create the prompt
         prompt = f"""
-        REQUEST FOR PROPOSAL (RFP):
-        {rfp_content}...
-        
+    
         KEY REQUIREMENTS EXTRACTED FROM RFP:
         {key_phrases}
         
         SIMILAR SUCCESSFUL PROPOSALS FOR REFERENCE:
         {examples_content}
         
-        Based on the RFP and similar proposals, create a compelling and technically sound proposal that includes ONLY the following three sections:
+        you are an AI-powered proposal assistant designed to generate a Methodology Statement for a technical proposal 
+        based on the Scope of Services outlined in extracted requirements {key_phrases} from the rfp and also the example proposals {examples_content}
+        Generate a Structured Methodology Statement
+        - The methodology statement should be detailed and structured, spanning multiple pages as applicable.  
+        - It should be professional, precise, and tailored to the specific consultancy services described in the RFP.  
+        - The content must be clear, technically sound, and demonstrate a comprehensive understanding of the project’s requirements.
 
-        1. COMMENTS AND SUGGESTIONS ON TERMS OF REFERENCE AND DATA, SERVICES AND FACILITIES TO BE PROVIDED BY THE EMPLOYER:
-        - Provide insightful comments on the Terms of Reference (TOR) that demonstrate deep understanding of the project needs
-        - Identify potential gaps or areas for improvement in the TOR
-        - Suggest practical enhancements to the scope or approach that would add value
-        - Discuss what additional data might be needed and why
-        - Specify what services and facilities you would require from the employer to deliver successfully
-        - Show how your suggestions would improve project outcomes and efficiency
+        Methodology Statement Structure
+        1. Introduction
+        - Overview of the consultancy services to be provided.  
+        - Explanation of how the proposed methodology aligns with the client’s needs as stated in the RFP.  
+        - Key objectives of the assignment.
 
-        2. DESCRIPTION OF THE METHODOLOGY:
-        - Outline a comprehensive, innovative methodology tailored specifically to this project
-        - Explain your conceptual framework and technical approach
-        - Describe specific methods, tools, and technologies you would employ
-        - Explain how your methodology addresses the unique challenges of this project
-        - Demonstrate how your approach is superior to standard approaches
-        - Include diagrams or process flows if appropriate
+        2. Scope of the Consultancy Services
+        - Detailed description of the Scope of Services as extracted from the RFP.  
+        - Breakdown of the client’s key expectations, deliverables, and specific tasks required.  
+        - Any technical, regulatory, or operational constraints affecting service execution.
 
-        3. WORK PLAN FOR PERFORMING THE ASSIGNMENT:
-        - Present a detailed, realistic timeline with key milestones and deliverables
-        - Break down the work into logical phases, tasks, and subtasks
-        - Allocate appropriate time for each activity
-        - Identify critical path items and dependencies
-        - Include quality control measures and review points
-        - Demonstrate efficient resource allocation and scheduling
-        - Show how your work plan ensures timely completion while maintaining quality
+        3. Project Objectives and Mobilization
+        - Key objectives of the consultancy services.  
+        - Mobilization plan, including initial preparation activities before full-scale implementation.  
+        - Logistics, resources, and preparatory actions to ensure a smooth project start.
 
-        Your proposal should be practical, innovative, and convincing. Use industry best practices and 
-        demonstrate expertise in the subject matter. Be specific rather than generic, and avoid padding content
-        with unnecessary information. Focus on showing how your approach will solve the client's problems and
-        deliver superior results.
+        4. Pre-Commencement Activities
+        (Tailor this section based on the Scope of Services extracted from the RFP)  
+        - Site Inspection & Initial Assessments (if applicable).  
+        - Review & Analysis of Existing Designs (if applicable).  
+        - Collection, Evaluation, and Analysis of Data relevant to the assignment.  
+        - Any preliminary planning activities essential for the consultancy services.  
+
+        5. Technical Approach and Methodology  
+        (Provide a clear and detailed methodology, adapting to the specific consultancy services required in the RFP.)  
+        5.1 Methodology for Performing the Assignment  
+        - Step-by-step approach detailing how the consultancy services will be executed.  
+        - Use of industry best practices, innovative approaches, and compliance with relevant standards.  
+        - Any specialized methodologies, frameworks, or techniques relevant to the assignment.  
+        5.2 Work Plan for Performing the Assignment 
+        - Detailed breakdown of major tasks, milestones, and timelines.  
+        - Implementation schedule, indicating key phases of the project.  
+        - Integration of monitoring and evaluation mechanisms to track progress.  
+        6. Conclusion
+        - Summary reinforcing the consultant’s approach to successfully delivering the services.  
+        - Commitment to efficiency, quality, and compliance with project goals.  
+
+        Formatting & Style Guidelines
+        - The response must be customized to the specific consultancy services required.  
+        - Use professional, technical, and persuasive language suitable for a bid submission.  
+        - Maintain logical flow with clear headings, subheadings, and bullet points.  
+        - Ensure industry-standard formatting for professional proposals.  
+        The methodology statement should be comprehensive, structured, and aligned with the client’s expectations as defined in the RFP.
         """
         
         # Call the API with a longer max_tokens value and higher temperature for creativity
@@ -217,7 +316,7 @@ def generate_proposal(rfp_content, key_phrases, similar_proposals):
                     "content": prompt
                 }
             ],
-            max_tokens=4000,
+            max_tokens=16000,
             temperature=0.7
         )
         
@@ -240,10 +339,10 @@ def main():
         # Extract text from the saved PDF file
         rfp_text = extract_text_from_pdf(temp_file_path)
 
-        # Display RFP content
+        # Display RFP content with fullscreen capability
         st.write("RFP Content:")
         with st.expander("View RFP Content", expanded=False):
-            st.text_area("RFP Content", rfp_text, height=300)
+            fullscreen_text_area(rfp_text, height=300, key="rfp_content")
 
         # Extract key phrases from the RFP content
         with st.spinner("Extracting Key Phrases..."):
@@ -252,7 +351,7 @@ def main():
         if key_phrases:
             st.write("Extracted Key Phrases:")
             with st.expander("View Extracted Key Phrases", expanded=False):
-                st.text_area("Extracted Key Phrases", key_phrases, height=300)
+                fullscreen_text_area(key_phrases, height=300, key="key_phrases")
             
             with st.spinner("Searching for similar proposals..."):
                 similar_proposals = search_similar_technical_proposal(key_phrases)
@@ -267,7 +366,7 @@ def main():
                 with st.expander("View Similar Proposals", expanded=False):
                     for idx, (filename, score, content) in enumerate(similar_proposals, start=1):
                         st.subheader(f"Proposal {idx}: {filename} (Score: {score:.2f})")
-                        st.text_area(f"{filename}", content, height=300)
+                        fullscreen_text_area(content, height=500, key=f"proposal_{idx}")
             
             # Add button to generate new proposal
             if has_similar_proposals:
@@ -277,14 +376,14 @@ def main():
                     
                     if generated_proposal:
                         st.subheader("Generated Proposal")
-                        st.text_area("Generated Proposal", generated_proposal, height=500)
+                        fullscreen_text_area(generated_proposal, height=500, key="generated_proposal")
                         
                         # Add a download button for the generated proposal
                         st.download_button(
-                            label="Download Proposal as Text",
+                            label="Download the new Proposal",
                             data=generated_proposal,
                             file_name="generated_proposal.txt",
-                            mime="text/plain"
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         )
         else:
             st.write("No key phrases extracted.")
