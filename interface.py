@@ -10,6 +10,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain.llms import OpenAI
 from docx import Document
 import io
+import re
 
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
@@ -212,6 +213,126 @@ def search_similar_technical_proposal(query):
     
     return result_texts
 
+# def generate_proposal(rfp_content, key_phrases, similar_proposals):
+#     """
+#     Generate a new proposal based on the RFP content, extracted key phrases, and similar proposals.
+    
+#     Args:
+#         rfp_content (str): The full text of the uploaded RFP
+#         key_phrases (str): Extracted key phrases from the RFP
+#         similar_proposals (list): List of tuples containing (filename, score, content) for similar proposals
+    
+#     Returns:
+#         str: Generated proposal content
+#     """
+#     try:
+#         api_key = OPENAI_API_KEY
+#         if api_key is None:
+#             raise ValueError("API Key is missing")
+
+#         openai.api_key = api_key
+        
+#         # Prepare examples from similar proposals
+#         examples_content = ""
+#         for idx, (filename, score, content) in enumerate(similar_proposals, start=1):
+#             examples_content += f"\n\nEXAMPLE PROPOSAL {idx} (Score: {score:.2f}):\n{content[:10000]}..."  # Limit size of each example
+        
+#         # Create the prompt
+#         prompt = f"""
+    
+#         KEY REQUIREMENTS EXTRACTED FROM RFP:
+#         {key_phrases}
+        
+#         SIMILAR SUCCESSFUL PROPOSALS FOR REFERENCE:
+#         {examples_content}
+        
+#         you are an AI-powered proposal assistant designed to generate a Methodology Statement for a technical proposal 
+#         based on the Scope of Services outlined in extracted requirements {key_phrases} from the rfp and also the example proposals {examples_content}
+#         Generate a Structured Methodology Statement
+#         - The methodology statement should be detailed and structured, spanning multiple pages as applicable.  
+#         - It should be professional, precise, and tailored to the specific consultancy services described in the RFP.  
+#         - The content must be clear, technically sound, and demonstrate a comprehensive understanding of the project’s requirements.
+
+#         Methodology Statement Structure
+#         1. Introduction
+#         - Overview of the consultancy services to be provided.  
+#         - Explanation of how the proposed methodology aligns with the client’s needs as stated in the RFP.  
+#         - Key objectives of the assignment.
+
+#         2. Scope of the Consultancy Services
+#         - Detailed description of the Scope of Services as extracted from the RFP.  
+#         - Breakdown of the client’s key expectations, deliverables, and specific tasks required.  
+#         - Any technical, regulatory, or operational constraints affecting service execution.
+
+#         3. Project Objectives and Mobilization
+#         - Key objectives of the consultancy services.  
+#         - Mobilization plan, including initial preparation activities before full-scale implementation.  
+#         - Logistics, resources, and preparatory actions to ensure a smooth project start.
+
+#         4. Pre-Commencement Activities
+#         (Tailor this section based on the Scope of Services extracted from the RFP)  
+#         - Site Inspection & Initial Assessments (if applicable).  
+#         - Review & Analysis of Existing Designs (if applicable).  
+#         - Collection, Evaluation, and Analysis of Data relevant to the assignment.  
+#         - Any preliminary planning activities essential for the consultancy services.  
+
+#         5. Technical Approach and Methodology  
+#         (Provide a clear and detailed methodology, adapting to the specific consultancy services required in the RFP.)  
+#         5.1 Methodology for Performing the Assignment  
+#         - Step-by-step approach detailing how the consultancy services will be executed.  
+#         - Use of industry best practices, innovative approaches, and compliance with relevant standards.  
+#         - Any specialized methodologies, frameworks, or techniques relevant to the assignment.  
+#         5.2 Work Plan for Performing the Assignment 
+#         - Detailed breakdown of major tasks, milestones, and timelines.  
+#         - Implementation schedule, indicating key phases of the project.  
+#         - Integration of monitoring and evaluation mechanisms to track progress.  
+#         6. Conclusion
+#         - Summary reinforcing the consultant’s approach to successfully delivering the services.  
+#         - Commitment to efficiency, quality, and compliance with project goals.  
+
+#         Formatting & Style Guidelines
+#         - The response must be customized to the specific consultancy services required.  
+#         - Use professional, technical, and persuasive language suitable for a bid submission.  
+#         - Maintain logical flow with clear headings, subheadings, and bullet points.  
+#         - Ensure industry-standard formatting for professional proposals.  
+#         The methodology statement should be comprehensive, structured, and aligned with the client’s expectations as defined in the RFP.
+#         """
+        
+#         # Call the API with a longer max_tokens value and higher temperature for creativity
+#         response = openai.chat.completions.create(
+#             model="gpt-4o",  # Using full GPT-4o for better quality
+#             messages=[
+#                 {
+#                     "role": "system",
+#                     "content": ("You are an elite proposal writer and domain expert with 20+ years of experience winning competitive bids. "
+#                                "Your task is to write three specific sections of a proposal that demonstrate superior expertise, "
+#                                "innovative thinking, and a deep understanding of the client's needs. "
+#                                "Your writing should be confident, technically precise, and compelling. "
+#                                "Draw from your extensive experience to create content that stands out from competitors. "
+#                                "Be specific, practical, and convincing rather than generic or theoretical. "
+#                                "Focus on demonstrating value and addressing the client's pain points throughout your response.")
+#                 },
+#                 {
+#                     "role": "user",
+#                     "content": prompt
+#                 }
+#             ],
+#             max_tokens=16000,
+#             temperature=0.7
+#         )
+        
+#         return response.choices[0].message.content
+#     except Exception as e:
+#         st.error(f"Error during proposal generation: {e}")
+#         return None
+def extract_headings(text):
+
+    pattern = r"^(####.*)$"  
+    
+    # Use re.findall with multiline flag to capture headings
+    matches = re.findall(pattern, text, re.MULTILINE)
+    
+    return matches
 def generate_proposal(rfp_content, key_phrases, similar_proposals):
     """
     Generate a new proposal based on the RFP content, extracted key phrases, and similar proposals.
@@ -245,56 +366,80 @@ def generate_proposal(rfp_content, key_phrases, similar_proposals):
         SIMILAR SUCCESSFUL PROPOSALS FOR REFERENCE:
         {examples_content}
         
-        you are an AI-powered proposal assistant designed to generate a Methodology Statement for a technical proposal 
-        based on the Scope of Services outlined in extracted requirements {key_phrases} from the rfp and also the example proposals {examples_content}
-        Generate a Structured Methodology Statement
-        - The methodology statement should be detailed and structured, spanning multiple pages as applicable.  
-        - It should be professional, precise, and tailored to the specific consultancy services described in the RFP.  
-        - The content must be clear, technically sound, and demonstrate a comprehensive understanding of the project’s requirements.
+        You are an AI-powered bid proposal assistant designed to generate a detailed, structured, and comprehensive Methodology Statement for a technical proposal.
 
-        Methodology Statement Structure
-        1. Introduction
-        - Overview of the consultancy services to be provided.  
-        - Explanation of how the proposed methodology aligns with the client’s needs as stated in the RFP.  
-        - Key objectives of the assignment.
+Your goal is to generate a fully developed Methodology Statement based on:
 
-        2. Scope of the Consultancy Services
-        - Detailed description of the Scope of Services as extracted from the RFP.  
-        - Breakdown of the client’s key expectations, deliverables, and specific tasks required.  
-        - Any technical, regulatory, or operational constraints affecting service execution.
+The Scope of Services extracted from the uploaded Request for Proposal (RFP).
 
-        3. Project Objectives and Mobilization
-        - Key objectives of the consultancy services.  
-        - Mobilization plan, including initial preparation activities before full-scale implementation.  
-        - Logistics, resources, and preparatory actions to ensure a smooth project start.
+The most relevant past methodology sections retrieved from similar proposals.
 
-        4. Pre-Commencement Activities
-        (Tailor this section based on the Scope of Services extracted from the RFP)  
-        - Site Inspection & Initial Assessments (if applicable).  
-        - Review & Analysis of Existing Designs (if applicable).  
-        - Collection, Evaluation, and Analysis of Data relevant to the assignment.  
-        - Any preliminary planning activities essential for the consultancy services.  
+Methodology Statement Generation Guidelines:
+Use a fully developed paragraph structure rather than summarizing key points.
 
-        5. Technical Approach and Methodology  
-        (Provide a clear and detailed methodology, adapting to the specific consultancy services required in the RFP.)  
-        5.1 Methodology for Performing the Assignment  
-        - Step-by-step approach detailing how the consultancy services will be executed.  
-        - Use of industry best practices, innovative approaches, and compliance with relevant standards.  
-        - Any specialized methodologies, frameworks, or techniques relevant to the assignment.  
-        5.2 Work Plan for Performing the Assignment 
-        - Detailed breakdown of major tasks, milestones, and timelines.  
-        - Implementation schedule, indicating key phases of the project.  
-        - Integration of monitoring and evaluation mechanisms to track progress.  
-        6. Conclusion
-        - Summary reinforcing the consultant’s approach to successfully delivering the services.  
-        - Commitment to efficiency, quality, and compliance with project goals.  
+Incorporate detailed explanations, industry best practices, and project-specific considerations.
 
-        Formatting & Style Guidelines
-        - The response must be customized to the specific consultancy services required.  
-        - Use professional, technical, and persuasive language suitable for a bid submission.  
-        - Maintain logical flow with clear headings, subheadings, and bullet points.  
-        - Ensure industry-standard formatting for professional proposals.  
-        The methodology statement should be comprehensive, structured, and aligned with the client’s expectations as defined in the RFP.
+Ensure the writing is technical, professional, and persuasive—tailored for bid submission.
+
+Where applicable, reuse content from retrieved methodology statements while adapting them to the new RFP’s requirements.
+
+Structure of the Methodology Statement
+1. Introduction
+Overview of the consultancy services to be provided.
+
+Explain how the methodology aligns with the client’s requirements.
+
+Key project objectives.
+
+2. Scope of Consultancy Services
+Provide a detailed breakdown of the scope of services extracted from the RFP.
+
+Outline key deliverables and tasks required by the client.
+
+3. Project Objectives & Mobilization
+Clearly outline the primary objectives of the consultancy services.
+
+Describe the mobilization plan and initial preparation activities.
+
+4. Pre-Commencement Activities (Customized to RFP Requirements)
+Site Inspections & Assessments (if applicable).
+
+Review of existing designs, documents, and reports.
+
+Initial data collection, evaluation, and analysis.
+
+5. Technical Approach and Methodology
+5.1 Detailed Methodology for Performing the Assignment
+
+Provide a step-by-step breakdown of how the consultancy services will be executed.
+
+Utilize best practices, industry frameworks, and innovative approaches.
+
+Where applicable, explain the rationale behind key methodological choices.
+
+5.2 Work Plan and Execution Strategy
+
+Provide a detailed work plan outlining key phases, milestones, and deliverables.
+
+Include an implementation schedule, showing how the consultancy will progress.
+
+Describe monitoring and evaluation mechanisms to ensure project success.
+
+6. Conclusion
+Summarize the consultant’s approach to delivering high-quality services.
+
+Reinforce the firm’s commitment to efficiency, compliance, and client satisfaction.
+
+Key Instructions for Processing
+DO NOT SUMMARIZE. Generate a fully developed, detailed, and comprehensive methodology statement.
+
+REUSE relevant content from retrieved methodology sections to enhance the quality and depth of the response.
+
+Ensure detailed paragraph writing, providing a rationale for each methodological choice.
+
+Customize the methodology to the specific project described in the RFP.
+
+Maintain a professional and persuasive tone, suitable for competitive bid submissions.
         """
         
         # Call the API with a longer max_tokens value and higher temperature for creativity
@@ -385,6 +530,21 @@ def main():
                             file_name="generated_proposal.txt",
                             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         )
+                        sections= extract_headings(generated_proposal)
+                        st.write("Select an option from the dropdown")
+
+                           
+                        selected_option = st.selectbox("Choose an option:", sections)
+                        with st.form(key='my_form'):
+                            submitted = st.form_submit_button("Submit")
+                        # Display result after submission
+                        if submitted:
+                            st.success(f"You selected: {selected_option}")
+                        else:
+                            st.write("No key phrases extracted.")
+
+                        
+
         else:
             st.write("No key phrases extracted.")
 
