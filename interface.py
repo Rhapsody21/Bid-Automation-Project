@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import re
 import random
 import string
+import json
 
 # Import required libraries
 from pinecone import Pinecone as PineconeClient
@@ -23,7 +24,7 @@ INDEX_NAME = "bid-project-index"
 
 # Initialize Clients
 pc_client = PineconeClient(api_key=PINECONE_API_KEY)
-index = pc_client.Index(INDEX_NAME)
+index = pc_client.Index(name=INDEX_NAME)
 embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
 
 # Streamlit Page Configuration
@@ -46,37 +47,13 @@ class ProposalGenerator:
         if key is None:
             key = ''.join(random.choices(string.ascii_lowercase, k=10))
         
-        viewer_id = f"doc-viewer-{key}"
-        btn_id = f"floating-fs-btn-{key}"
-        
-        # JavaScript for Full-Screen Mode
-        fullscreen_js = f"""
-        <script>
-            function openFullScreen_{key}() {{
-                var docViewer = document.getElementById("{viewer_id}");
-                if (docViewer.requestFullscreen) {{
-                    docViewer.requestFullscreen();
-                }} else if (docViewer.mozRequestFullScreen) {{
-                    docViewer.mozRequestFullScreen();
-                }} else if (docViewer.webkitRequestFullscreen) {{
-                    docViewer.webkitRequestFullscreen();
-                }} else if (docViewer.msRequestFullscreen) {{
-                    docViewer.msRequestFullscreen();
-                }}
-            }}
-        </script>
-        """
-        
-        # Text Area and Floating Button
+        # Regular text area for input/output
         text_area = st.text_area(f"Content", text, height=height, key=key)
         
+        # Simplified HTML for fullscreen button
         html = f"""
         <div style="position: relative; width: 100%; margin-top: -45px; z-index: 1000;">
-            <div id="{viewer_id}" style="position: relative; width: 100%;">
-                <pre style="white-space: pre-wrap; word-wrap: break-word; display:none;">{text}</pre>
-            </div>
-            
-            <button id="{btn_id}" onclick="openFullScreen_{key}()" style="
+            <button onclick="toggleFullScreen('{key}')" style="
                 position: absolute;
                 bottom: 20px;
                 right: 20px;
@@ -86,22 +63,13 @@ class ProposalGenerator:
                 background-color: rgba(0, 123, 255, 0.7);
                 color: white;
                 border: none;
-                display: flex;
-                align-items: center;
-                justify-content: center;
                 cursor: pointer;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-                z-index: 1000;
-                transition: all 0.3s ease;
-            ">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                z-index: 1000;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
                 </svg>
             </button>
-        </div>
-        {fullscreen_js}
-        """
-        
+        </div>"""
         st.components.v1.html(html, height=0)
         
         return text_area
@@ -172,43 +140,53 @@ class ProposalGenerator:
         Returns:
             list: Top matching proposals
         """
-        query_embedding = embeddings.embed_query(query)
-        
-        results = index.query(
-            vector=query_embedding,
-            filter={"collection_type": "technical_proposal"},
-            top_k=3,
-            include_metadata=True
-        )
-
-        if not results or not results.get("matches"):
-            return "No similar proposals found."
-
-        matched_proposals = []
-        for match in results["matches"]:
-            metadata = match.get("metadata", {})
-            filename = metadata.get("filename", "Unknown")
-            score = match.get("score", 0)
+        try:
+            query_embedding = embeddings.embed_query(query)
             
-            # Fetch full document chunks
-            chunks_query = index.query(
+            results = index.query(
                 vector=query_embedding,
-                filter={"collection_type": "technical_proposal", "filename": filename},
-                top_k=50,
+                filter={"collection_type": "technical_proposal"},
+                top_k=3,
                 include_metadata=True
             )
+
+            matches = results.matches if hasattr(results, 'matches') else results.get("matches", [])
             
-            document_chunks = sorted(
-                [{"chunk_id": chunk.get("metadata", {}).get("chunk_id", 0), 
-                  "text": chunk.get("metadata", {}).get("text", "")} 
-                 for chunk in chunks_query.get("matches", [])],
-                key=lambda x: x["chunk_id"]
-            )
+            if not matches:
+                return "No similar proposals found."
+
+            matched_proposals = []
+            for match in matches:
+                metadata = match.metadata if hasattr(match, 'metadata') else match.get("metadata", {})
+                filename = metadata.get("filename", "Unknown")
+                score = match.score if hasattr(match, 'score') else match.get("score", 0)
+                
+                # Fetch full document chunks with updated query format
+                chunks_query = index.query(
+                    vector=query_embedding,
+                    filter={"collection_type": "technical_proposal", "filename": filename},
+                    top_k=50,
+                    include_metadata=True
+                )
+                
+                chunk_matches = chunks_query.matches if hasattr(chunks_query, 'matches') else chunks_query.get("matches", [])
+                
+                document_chunks = []
+                for chunk in chunk_matches:
+                    chunk_metadata = chunk.metadata if hasattr(chunk, 'metadata') else chunk.get("metadata", {})
+                    document_chunks.append({
+                        "chunk_id": chunk_metadata.get("chunk_id", 0),
+                        "text": chunk_metadata.get("text", "")
+                    })
+                
+                document_chunks.sort(key=lambda x: x["chunk_id"])
+                complete_text = "\n\n".join([chunk["text"] for chunk in document_chunks])
+                matched_proposals.append((filename, score, complete_text))
             
-            complete_text = "\n\n".join([chunk["text"] for chunk in document_chunks])
-            matched_proposals.append((filename, score, complete_text))
-        
-        return matched_proposals
+            return matched_proposals
+        except Exception as e:
+            st.error(f"Error searching similar proposals: {str(e)}")
+            return []
 
     @staticmethod
     def generate_proposal(rfp_content, key_phrases, similar_proposals):
@@ -255,6 +233,7 @@ class ProposalGenerator:
                         - Use professional, technical language
                         - Demonstrate deep understanding of project requirements
                         - Incorporate best practices from reference proposals
+                        - for each heading make sure you use ### heading signs.
                         """
                     }
                 ],
@@ -307,7 +286,78 @@ class ProposalGenerator:
             return match.group(1).strip()
         else:
             return "Section not found in the proposal."
+    
+    @staticmethod
+    def update_section_in_proposal(full_proposal, section_heading, new_section_content):
+        """
+        Update a specific section in the proposal with new content.
+        
+        Args:
+            full_proposal (str): Complete proposal text
+            section_heading (str): Heading of the section to update
+            new_section_content (str): New content for the section
+        
+        Returns:
+            str: Updated proposal with the modified section
+        """
+        # Escape special regex characters in the section name
+        escaped_section = re.escape(section_heading.strip())
+        
+        # Find the section and its content up to the next heading or end of document
+        pattern = rf"({escaped_section})(.*?)(?=\n#|\Z)"
+        
+        # Search for the pattern in the proposal
+        match = re.search(pattern, full_proposal, re.DOTALL | re.MULTILINE | re.IGNORECASE)
+        
+        if match:
+            # Create the updated section with original heading and new content
+            updated_section = f"{section_heading}\n{new_section_content}"
+            
+            # Replace the old section with the updated one
+            updated_proposal = full_proposal[:match.start()] + updated_section + full_proposal[match.end():]
+            return updated_proposal
+        else:
+            return full_proposal  # Return original if section not found
+    
+    @staticmethod
+    def extract_methodology_and_after(text, api_key=OPENAI_API_KEY):
+        """
+        Extract methodology section from text using OpenAI.
+        
+        Args:
+            text (str): Input text
+            api_key (str): OpenAI API key
+        
+        Returns:
+            str: Extracted methodology section
+        """
+        try:
+            openai.api_key = api_key
+            
+            response = openai.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are a document parsing expert."},
+                    {"role": "user", "content": (
+                        "You are a helpful assistant. Given the following academic or report-like document, "
+                        "extract the full 'Methodology' section and everything that follows it. "
+                        "Do not stop until the next major section such as 'Results', 'Discussion', or 'Conclusion'.\n\n"
+                        "DOCUMENT:\n" + text + "\n\n"
+                        "###\n\n"
+                        "Return the whole content of the the Methodology section."
+                    )}
+                ],
+                temperature=0.2,
+                max_tokens=2000
+            )
+            
+            methodology_section = response.choices[0].message.content.strip()
+            return methodology_section
 
+        except Exception as e:
+            print(f"Error: {e}")
+            return None
+            
     @staticmethod
     def expand_section(section_content):
         """
@@ -333,13 +383,11 @@ class ProposalGenerator:
                         "role": "user",
                         "content": f"""
                         Provide an extremely detailed, comprehensive expansion of the following section. 
-                        Go beyond the original text and offer:
-                        - In-depth context
-                        - Strategic insights
-                        - Comprehensive rationale
-                        - Potential implementation approaches
-                        - Detailed explanations of key concepts
-                        - Potential challenges and mitigation strategies
+                        Go beyond the original text. 
+                        - first of all make sure you understand well the aim of that sections
+                        - compare the aim with what was previously provided as the section content 
+                        - now explain in more details what was given make sure that everything is clearly understandable
+                        and detailed as enough as possible. 
 
                         Original Section Content:
                         {section_content}
@@ -353,39 +401,185 @@ class ProposalGenerator:
                     }
                 ],
                 max_tokens=2000,
-                temperature=0.7
+                temperature=0.8
             )
-
             return response.choices[0].message.content
         except Exception as e:
             return f"Error in section expansion: {str(e)}"
+            
+    @staticmethod
+    def extract_sections(generated_proposal, api_key=OPENAI_API_KEY):
+        """
+        Use GPT-4 to extract all sections from the proposal
+        """
+        try:
+            openai.api_key = api_key
+            
+            response = openai.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a document parsing expert."},
+                    {"role": "user", "content": (
+                        "Extract all sections from the following proposal. For each section, provide:\n"
+                        "1. The exact section heading (with any markdown formatting like ###)\n"
+                        "2. The complete section content\n\n"
+                        "Format your response as JSON with this structure:\n"
+                        "{\n"
+                        "  \"sections\": [\n"
+                        "    {\n"
+                        "      \"heading\": \"### Section Title\",\n"
+                        "      \"content\": \"Full section content goes here...\"\n"
+                        "    },\n"
+                        "    ...\n"
+                        "  ]\n"
+                        "}\n\n"
+                        "PROPOSAL:\n" + generated_proposal
+                    )}
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.2,
+                max_tokens=8000
+            )
+            
+            result = json.loads(response.choices[0].message.content)
+            return result["sections"]
+        except Exception as e:
+            print(f"Error extracting sections with GPT-4: {e}")
+            return []
+
+    @staticmethod
+    def save_sections_to_files(sections, output_directory="proposal_sections"):
+        """
+        Save each section to a separate file.
+        
+        Args:
+            sections (list): List of section dictionaries
+            output_directory (str): Directory to save files
+        
+        Returns:
+            list: List of saved filenames
+        """
+        # Create directory if it doesn't exist
+        os.makedirs(output_directory, exist_ok=True)
+        
+        saved_files = []
+        
+        for i, section in enumerate(sections):
+            heading = section.get("heading", "")
+            content = section.get("content", "")
+            
+            # Clean heading for filename
+            clean_heading = re.sub(r'[^a-zA-Z0-9 ]', '', heading.replace('#', '').strip())
+            filename = f"{clean_heading.lower().replace(' ', '_')}.txt"
+            
+            file_path = os.path.join(output_directory, filename)
+            
+            try:
+                with open(file_path, "w") as file:
+                    file.write(f"{heading}\n\n{content}")
+                saved_files.append(filename)
+            except Exception as e:
+                print(f"Error saving section '{heading}' to file: {e}")
+        
+        return saved_files
+
+    @staticmethod
+    def update_section_file(heading, content, output_directory="proposal_sections"):
+        """
+        Update a specific section file with new content.
+        
+        Args:
+            heading (str): Heading of the section to update
+            content (str): New content for the section
+            output_directory (str): Directory containing section files
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Clean heading for filename (similar to how files were originally saved)
+            clean_heading = re.sub(r'[^a-zA-Z0-9 ]', '', heading.replace('#', '').strip())
+            filename = f"{clean_heading.lower().replace(' ', '_')}.txt"
+            
+            file_path = os.path.join(output_directory, filename)
+            
+            # Check if file exists
+            if not os.path.exists(file_path):
+                print(f"Section file not found: {file_path}")
+                return False
+            
+            # Update file with new content
+            with open(file_path, "w") as file:
+                file.write(f"{heading}\n\n{content}")
+            
+            return True
+        except Exception as e:
+            print(f"Error updating section file: {e}")
+            return False
+            
+    @staticmethod
+    def save_proposal_to_file(proposal_text, filename="generated_proposal.txt"):
+        """
+        Save proposal text to a file.
+        
+        Args:
+            proposal_text (str): Proposal content to save
+            filename (str): Name of the file to save to
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            with open(filename, "w") as file:
+                file.write(proposal_text)
+            return True
+        except Exception as e:
+            st.error(f"Error saving proposal to file: {e}")
+            return False
+            
+    @staticmethod
+    def merge_sections_from_files(directory="proposal_sections"):
+        """
+        Merge all section files into a single document in order.
+        
+        Args:
+            directory (str): Directory containing section files
+        
+        Returns:
+            str: Merged content of all sections
+        """
+        try:
+            # Get all text files in the directory
+            files = [f for f in os.listdir(directory) if f.endswith('.txt')]
+            
+            # Sort files by their numeric prefix
+            files.sort(key=lambda x: int(x.split('_')[0]) if x.split('_')[0].isdigit() else float('inf'))
+            
+            merged_content = ""
+            
+            for file_name in files:
+                file_path = os.path.join(directory, file_name)
+                with open(file_path, 'r') as file:
+                    content = file.read()
+                    merged_content += content + "\n\n"
+            
+            return merged_content
+        except Exception as e:
+            print(f"Error merging sections: {e}")
+            return None
 
 def main():
     st.title("Technical Proposal Generator")
-
+    
     # Initialize session state variables if they don't exist
-    if 'uploaded_file' not in st.session_state:
-        st.session_state.uploaded_file = None
-    if 'rfp_text' not in st.session_state:
-        st.session_state.rfp_text = None
-    if 'key_phrases' not in st.session_state:
-        st.session_state.key_phrases = None
-    if 'similar_proposals' not in st.session_state:
-        st.session_state.similar_proposals = None
-    if 'generated_proposal' not in st.session_state:
-        st.session_state.generated_proposal = None
-    if 'sections' not in st.session_state:
-        st.session_state.sections = []
-    if 'section_content' not in st.session_state:
-        st.session_state.section_content = None
-    if 'expanded_section' not in st.session_state:
-        st.session_state.expanded_section = None
-    if 'displayed_expanded_content' not in st.session_state:
-        st.session_state.displayed_expanded_content = False
-    if 'displayed_section_content' not in st.session_state:
-        st.session_state.displayed_section_content = False
-    if 'selected_section_title' not in st.session_state:
-        st.session_state.selected_section_title = None
+    for key in ['uploaded_file', 'rfp_text', 'key_phrases', 'similar_proposals', 
+                'generated_proposal', 'proposal_display', 'sections', 
+                'section_content', 'expanded_section', 'displayed_expanded_content',
+                'displayed_section_content', 'selected_section_title', 
+                'section_updated', 'edit_expanded_section', 'extracted_sections',
+                'saved_section_files']:
+        if key not in st.session_state:
+            st.session_state[key] = None
 
     # Callbacks for buttons to avoid rerunning on state change
     def generate_proposal_callback():
@@ -396,6 +590,17 @@ def main():
     
     def expand_section_callback():
         st.session_state.expand_section_clicked = True
+    
+    def update_section_callback():
+        # Store the updated content in a temporary session state variable
+        st.session_state.temp_updated_content = st.session_state.edit_expanded_section
+        st.session_state.update_section_clicked = True
+    
+    def discard_update_callback():
+        st.session_state.discard_update_clicked = True
+    
+    def extract_sections_callback():
+        st.session_state.extract_sections_clicked = True
 
     # File uploader
     uploaded_file = st.file_uploader("Upload RFP Document", type=["pdf"])
@@ -403,13 +608,12 @@ def main():
     # Process new file upload
     if uploaded_file and (st.session_state.uploaded_file is None or uploaded_file.name != st.session_state.uploaded_file.name):
         st.session_state.uploaded_file = uploaded_file
-        
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
             temp_file.write(uploaded_file.read())
             temp_file_path = temp_file.name
 
         st.success("File uploaded successfully")
-
+        
         # Extract and display RFP content
         rfp_text = ProposalGenerator.extract_text_from_pdf(temp_file_path)
         st.session_state.rfp_text = rfp_text
@@ -418,11 +622,15 @@ def main():
         st.session_state.key_phrases = None
         st.session_state.similar_proposals = None
         st.session_state.generated_proposal = None
+        st.session_state.proposal_display = None
         st.session_state.sections = []
         st.session_state.section_content = None
         st.session_state.expanded_section = None
         st.session_state.displayed_expanded_content = False
         st.session_state.displayed_section_content = False
+        st.session_state.section_updated = False
+        st.session_state.extracted_sections = []
+        st.session_state.saved_section_files = []
         
     # Display RFP content if available
     if st.session_state.rfp_text:
@@ -454,10 +662,15 @@ def main():
                 for idx, (filename, score, content) in enumerate(st.session_state.similar_proposals, 1):
                     with st.expander(f"Proposal {idx}: {filename} (Similarity: {score:.2f})", expanded=False):
                         ProposalGenerator.fullscreen_text_area(content, height=500, key=f"proposal_{idx}")
+                    
+                    # Extract methodology for each proposal
+                    extracted_methodology = ProposalGenerator.extract_methodology_and_after(content)
+                    with st.expander(f"Extracted methodology for proposal {idx}: {filename}", expanded=False):
+                        ProposalGenerator.fullscreen_text_area(extracted_methodology, height=500, key=f"methodology_{idx}")
                 
                 # Generate proposal button
                 if st.button("Generate Proposal", on_click=generate_proposal_callback):
-                    st.session_state.generate_proposal_clicked = True
+                    pass
                 
                 # Handle proposal generation
                 if 'generate_proposal_clicked' in st.session_state and st.session_state.generate_proposal_clicked:
@@ -469,7 +682,33 @@ def main():
                                 st.session_state.similar_proposals
                             )
                             st.session_state.generated_proposal = generated_proposal
+                            st.session_state.proposal_display = generated_proposal  # Add display copy
                             st.session_state.sections = ProposalGenerator.extract_headings(generated_proposal)
+                            
+                            # Save the initial proposal to file
+                            ProposalGenerator.save_proposal_to_file(generated_proposal)
+                            
+                            # Extract sections using GPT-4
+                            with st.spinner("Using GPT-4 to extract and save proposal sections..."):
+                                extracted_sections = ProposalGenerator.extract_sections(generated_proposal)
+                                st.session_state.extracted_sections = extracted_sections
+                                
+                                # Save extracted sections to files
+                                output_dir = os.path.join(os.getcwd(), "proposal_sections")
+                                saved_files = ProposalGenerator.save_sections_to_files(
+                                    extracted_sections, 
+                                    output_directory=output_dir
+                                )
+                                st.session_state.saved_section_files = saved_files
+                                
+                                # Display success message with saved files
+                                if saved_files:
+                                    st.success(f"Successfully saved {len(saved_files)} sections to '{output_dir}' directory")
+                                    with st.expander("Saved section files", expanded=True):
+                                        for file in saved_files:
+                                            st.write(f"- {file}")
+                                else:
+                                    st.warning("No sections were saved. Please check if the proposal contains properly formatted sections.")
                     
                     # Reset the flag
                     st.session_state.generate_proposal_clicked = False
@@ -478,7 +717,8 @@ def main():
     if st.session_state.generated_proposal:
         st.subheader("Generated Proposal")
         with st.expander("View full generated proposal", expanded=False):
-            ProposalGenerator.fullscreen_text_area(st.session_state.generated_proposal, height=600, key="generated_proposal")
+            proposal_display = st.session_state.proposal_display if st.session_state.proposal_display else st.session_state.generated_proposal
+            ProposalGenerator.fullscreen_text_area(proposal_display, height=600, key="proposal_display_view")
         
         # Download button
         st.download_button(
@@ -527,26 +767,120 @@ def main():
         # Handle expand section button
         if 'expand_section_clicked' in st.session_state and st.session_state.expand_section_clicked:
             with st.spinner(f"Expanding section..."):
-                base_content = ProposalGenerator.extract_section_content(
-                    st.session_state.generated_proposal, 
-                    st.session_state.selected_section_title
-                )
-                expanded_content = ProposalGenerator.expand_section(base_content)
+                # First get the section content if not already fetched
+                if not st.session_state.section_content:
+                    section_content = ProposalGenerator.extract_section_content(
+                        st.session_state.generated_proposal, 
+                        st.session_state.selected_section_title
+                    )
+                    st.session_state.section_content = section_content
+                
+                # Now expand this section
+                expanded_content = ProposalGenerator.expand_section(st.session_state.section_content)
                 st.session_state.expanded_section = expanded_content
                 st.session_state.displayed_expanded_content = True
                 st.session_state.displayed_section_content = False
+                st.session_state.edit_expanded_section = expanded_content  # Store for editing
             
             # Reset the flag
             st.session_state.expand_section_clicked = False
-        
-        # Display the content based on what was selected
+
+        # Display the section content or expanded content
         if st.session_state.displayed_section_content and st.session_state.section_content:
-            st.subheader(f"Section Content: {st.session_state.selected_section_title}")
-            st.markdown(st.session_state.section_content)
-        
+            st.subheader("Original Section Content")
+            ProposalGenerator.fullscreen_text_area(st.session_state.section_content, height=400, key="section_content_view")
+
+        # Display expanded section with edit capability
         if st.session_state.displayed_expanded_content and st.session_state.expanded_section:
-            st.subheader(f"Expanded Section: {st.session_state.selected_section_title}")
-            st.markdown(st.session_state.expanded_section)
+            st.subheader("Expanded Section Content")
+            st.text_area(
+                "Edit Expanded Content", 
+                value=st.session_state.expanded_section, 
+                height=500,
+                key="edit_expanded_section"
+            )
+            
+            # Add buttons to apply or discard changes
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Update Section with Expanded Content", on_click=update_section_callback):
+                    pass
+            with col2:
+                if st.button("Discard Changes", on_click=discard_update_callback):
+                    pass
+
+        # Handle update section button
+        if 'update_section_clicked' in st.session_state and st.session_state.update_section_clicked:
+            with st.spinner("Updating section in the proposal..."):
+                # Get the updated content from the session state
+                new_content = st.session_state.edit_expanded_section
+                
+                # Update the section in the full proposal
+                updated_proposal = ProposalGenerator.update_section_in_proposal(
+                    st.session_state.generated_proposal,
+                    st.session_state.selected_section_title,
+                    new_content
+                )
+                
+                # Update the proposal display
+                st.session_state.proposal_display = updated_proposal
+                st.session_state.generated_proposal = updated_proposal
+                
+                # Update the section file in the filesystem
+                section_updated = ProposalGenerator.update_section_file(
+                    st.session_state.selected_section_title,
+                    new_content
+                )
+                
+                if section_updated:
+                    st.session_state.section_updated = True
+                    st.success(f"Successfully updated section '{st.session_state.selected_section_title}'")
+                else:
+                    st.error("Failed to update section file")
+            
+            # Reset the flag
+            st.session_state.update_section_clicked = False
+
+        # Handle discard changes button
+        if 'discard_update_clicked' in st.session_state and st.session_state.discard_update_clicked:
+            # Reset expanded section editing
+            st.session_state.displayed_expanded_content = False
+            st.session_state.edit_expanded_section = None
+            
+            # Reset the flag
+            st.session_state.discard_update_clicked = False
+            st.warning("Changes discarded")
+
+        # Add a "Regenerate Full Proposal" button to merge all sections
+        if st.session_state.saved_section_files:
+            if st.button("Regenerate Full Proposal from Section Files"):
+                with st.spinner("Merging sections into complete proposal..."):
+                    output_dir = os.path.join(os.getcwd(), "proposal_sections")
+                    merged_proposal = ProposalGenerator.merge_sections_from_files(directory=output_dir)
+                    
+                    if merged_proposal:
+                        # Update the proposal in the session state
+                        st.session_state.generated_proposal = merged_proposal
+                        st.session_state.proposal_display = merged_proposal
+                        
+                        # Save the regenerated proposal
+                        saved = ProposalGenerator.save_proposal_to_file(
+                            merged_proposal, 
+                            filename="regenerated_proposal.txt"
+                        )
+                        
+                        if saved:
+                            st.success("Successfully regenerated proposal from section files")
+                            st.download_button(
+                                label="Download Regenerated Proposal",
+                                data=merged_proposal,
+                                file_name="regenerated_proposal.txt",
+                                mime="text/plain"
+                            )
+                        else:
+                            st.error("Failed to save regenerated proposal")
+                    else:
+                        st.error("Failed to merge proposal sections")
 
 if __name__ == "__main__":
     main()

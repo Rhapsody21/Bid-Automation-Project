@@ -1,0 +1,7 @@
+#### Testing and Commissioning
+
+Our testing and commissioning methodology ensures the transmission line and substations are fully operational and compliant with technical specifications:
+
+- **Pre-Commissioning Tests:** Performing rigorous testing of equipment and systems to verify functionality.
+- **Commissioning Activities:** Coordinating with GRIDCo for the energization of the transmission line and substations.
+- **Performance Validation:** Conducting performance tests to ensure systems operate efficiently under load conditions.
