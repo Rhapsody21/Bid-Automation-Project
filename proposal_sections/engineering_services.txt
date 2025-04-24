@@ -1,6 +1,0 @@
-#### Engineering Services
-
-Our engineering services will encompass detailed design, technical specifications, and feasibility analyses, ensuring all technical requirements are met efficiently and effectively.
-
-- **Design and Specifications:** Develop comprehensive engineering designs and specifications that incorporate industry best practices and comply with international standards.
-- **Feasibility Analyses:** Conduct thorough feasibility studies to assess technical solutions and optimize design choices for maximum efficiency and reliability.

@@ -1,7 +1,0 @@
-#### Project Management
-
-Our project management strategy is centered around effective stakeholder engagement, risk management, and timeline adherence. We will employ a phased approach to project delivery, ensuring each phase is completed to the satisfaction of GRIDCo before proceeding to the next.
-
-- **Stakeholder Engagement:** Establish clear communication channels with GRIDCo and relevant stakeholders to ensure timely decision-making and issue resolution.
-- **Risk Management:** Implement a proactive risk management framework to identify, assess, and mitigate potential risks throughout the project lifecycle.
-- **Timeline Adherence:** Utilize advanced project management tools to monitor progress and ensure adherence to project timelines and milestones.

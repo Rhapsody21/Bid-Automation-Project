@@ -1,6 +1,0 @@
-#### Reporting and Documentation
-
-Our documentation process ensures comprehensive project records and compliance with contractual obligations:
-
-- **Monthly and Quarterly Reports:** Submitting detailed progress reports to GRIDCo, including financial updates, risk assessments, and project milestones.
-- **Final Project Documentation:** Compiling as-built drawings, test results, and project closure reports for GRIDCo’s archives.
