@@ -275,9 +275,11 @@ def extract_sections(requirements, top_methodologies):
     prompt = f"""
     You are a proposal development expert.
 
-    Your task is to generate appropriate section titles for a consultant's Methodology Statement. Use the following Extracted Requirements only to infer project context, but DO NOT copy section headings directly from them (e.g., 'Evaluation Criteria', 'Eligibility Requirements' etc. are not appropriate methodology sections).
+    Your task is to generate appropriate section titles for a consultant's Methodology Statement. Use the following Extracted Requirements only to infer project context and ensure that you have done a critical analysis of the project objectives and the Terms Of Reference, but DO NOT copy section headings directly from them (e.g., 'Evaluation Criteria', 'Eligibility Requirements' etc. are not appropriate methodology sections).
 
     Instead, derive professional, context-aware Methodology Statement sections that align with both the project requirements and the tone/structure of the Reference Methodologies.
+
+    In generating these section titles for Methodology Statement, always consider and include sections on Conceptual and Methodological Approach, and Operationalisation of the approach and Methodology.
 
     Guidelines:
     - Return only numbered section titles.
