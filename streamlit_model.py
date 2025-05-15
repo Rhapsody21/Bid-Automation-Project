@@ -1,3 +1,15 @@
+import subprocess
+import sys
+
+# Uninstall pinecone-client if it's still hanging around
+try:
+    subprocess.call([sys.executable, "-m", "pip", "uninstall", "-y", "pinecone-client"])
+except Exception as e:
+    print("Uninstall attempt failed or not needed:", e)
+
+# Now import the correct pinecone
+import pinecone
+
 import os
 import streamlit as st
 import fitz  # PyMuPDF
@@ -9,6 +21,9 @@ from docx import Document
 from io import BytesIO
 from dotenv import load_dotenv
 load_dotenv()
+
+
+
 
 # Initialize API Keys
 pinecone_key = os.environ.get("PINECONE_API_KEY")
