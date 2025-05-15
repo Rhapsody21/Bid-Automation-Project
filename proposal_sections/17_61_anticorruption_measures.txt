@@ -1,0 +1,7 @@
+#### 6.1 Anti-Corruption Measures
+
+- **Objective:** Uphold integrity and ethical standards throughout the project lifecycle.
+- **Activities:**
+  - Implement a Code of Conduct for all project personnel, emphasizing anti-corruption and anti-fraud policies.
+  - Conduct ethics training sessions for staff and contractors.
+  - Establish a whistleblower mechanism for reporting unethical practices.

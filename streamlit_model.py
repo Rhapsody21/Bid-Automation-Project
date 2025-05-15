@@ -7,6 +7,8 @@ import json
 import re
 from docx import Document
 from io import BytesIO
+from dotenv import load_dotenv
+load_dotenv()
 
 # Initialize API Keys
 pinecone_key = os.environ.get("PINECONE_API_KEY")

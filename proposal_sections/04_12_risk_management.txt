@@ -1,0 +1,7 @@
+#### 1.2 Risk Management
+
+- **Objective:** Identify, assess, and mitigate project risks.
+- **Activities:**
+  - Perform a comprehensive risk assessment, identifying potential risks related to environmental, social, and technical factors.
+  - Develop a Risk Management Plan, including mitigation strategies and contingency plans.
+  - Regularly update risk assessments based on project progress and external factors.
