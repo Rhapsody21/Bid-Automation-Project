@@ -1,20 +1,8 @@
-import subprocess
-import sys
-
-# Uninstall pinecone-client if it's still hanging around
-try:
-    subprocess.call([sys.executable, "-m", "pip", "uninstall", "-y", "pinecone-client"])
-except Exception as e:
-    print("Uninstall attempt failed or not needed:", e)
-
-# Now import the correct pinecone
-import pinecone
-
 import os
 import streamlit as st
 import fitz  # PyMuPDF
 import openai
-import pinecone
+from pinecone import Pinecone
 import json
 import re
 from docx import Document
@@ -23,23 +11,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-
-
 # Initialize API Keys
 pinecone_key = os.environ.get("PINECONE_API_KEY")
 openai_key = os.environ.get("OPENAI_API_KEY")
-
-pinecone.init(
-    pinecone_key,
-    environment= "us-east-1" )
 
 if not pinecone_key or not openai_key:
     st.error("Missing API keys. Please set PINECONE_API_KEY and OPENAI_API_KEY in your environment.")
     st.stop()
 
 # Pinecone and OpenAI Initialization
-#pc = Pinecone(api_key=pinecone_key, environment="us-east-1")
-#index = pc.Index("bid-automation-index")
+pc = Pinecone(api_key=pinecone_key, environment="us-east-1")
+index = pc.Index("bid-automation-index")
 client = openai.OpenAI(api_key=openai_key)
 
 # Streamlit UI Setup
@@ -92,7 +74,7 @@ def extract_requirements(text):
 
 Extract the key requirements and relevant information needed to respond to the RFP based on the content provided.
 
-Give special attention to the **Terms of Reference (TOR)** and provide enough information about the TOR, as it contains critical details about scope, deliverables, and technical expectations which will guide the methodology and response structure.
+Give special attention to the *Terms of Reference (TOR)* and provide enough information about the TOR, as it contains critical details about scope, deliverables, and technical expectations which will guide the methodology and response structure.
 
 Structure your output in the following format. If any item is not found, state "Not specified" or "Not available":
 
@@ -387,7 +369,7 @@ if st.session_state.similar_proposals:
             full_methodology = ""
             for section in sections:
                 if section.strip():
-                    with st.spinner(f"✍️ Writing section: {section.strip()}"):
+                    with st.spinner(f"✍ Writing section: {section.strip()}"):
                         content = generate_section_content(section.strip(), requirements, top_methodologies)
                         full_methodology += f"\n\n{content.strip()}"
 
