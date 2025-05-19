@@ -7,8 +7,9 @@ import json
 import re
 from docx import Document
 from io import BytesIO
-from dotenv import load_dotenv
-load_dotenv()
+from enhancements import inject_custom_css, render_header  # Import your functions
+# from dotenv import load_dotenv
+# load_dotenv()
 
 
 # Initialize API Keys
@@ -415,3 +416,7 @@ if st.session_state.methodology_text:
             file_name="Methodology_and_work_plan.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
+
+
+
+
