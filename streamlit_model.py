@@ -7,13 +7,12 @@ import json
 import re
 from docx import Document
 from io import BytesIO
-from enhancements import inject_custom_css, render_header
+from enhancements import inject_custom_css, render_header, render_sidebar_menu
 
 
 # Set up page configuration
 st.set_page_config(
     page_title="Bid Proposal Generator",
-    # Automated Bid Preparation System (ABPSys)
     page_icon="📂",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -22,7 +21,7 @@ st.set_page_config(
 # Apply the enhancements
 inject_custom_css()
 render_header()
-
+render_sidebar_menu()
 
 # Initialize API Keys
 pinecone_key = os.environ.get("PINECONE_API_KEY")
@@ -36,6 +35,11 @@ if not pinecone_key or not openai_key:
 pc = Pinecone(api_key=pinecone_key, environment="us-east-1")
 index = pc.Index("bid-automation-index")
 client = openai.OpenAI(api_key=openai_key)
+
+# Streamlit UI Setup
+# st.set_page_config(page_title="Bid Proposal Generator", layout="wide")
+# st.title("📂 Bid Proposal Generator")
+# Automated Bid Preparation System (ABPSys)
 
 # Session State Defaults
 for key in ["requirements", "similar_proposals", "methodology_text", "detailed_sections"]:
@@ -194,7 +198,7 @@ if "requirements" in st.session_state and st.session_state.requirements.strip():
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        if st.button("🔎 Get Similar Proposals"):
+        if st.button("🔎 Find Similar Proposals"):
             with st.spinner("🔍 Searching in Database..."):
                 search_input = extract_search_query_fields(requirements)
 
@@ -271,7 +275,7 @@ if "requirements" in st.session_state and st.session_state.requirements.strip():
 
 # Show Top 3 Matching Proposals
 if st.session_state.similar_proposals:
-    st.subheader("📜 Top 3 Matching Proposals")
+    st.subheader("📜 Most Similar Proposals")
     for i, prop in enumerate(st.session_state.similar_proposals):
         with st.expander(prop["title"]):
             st.text_area(f"📄 Full Proposal Content", prop["content"], height=300)

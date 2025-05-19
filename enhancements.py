@@ -32,6 +32,15 @@ def inject_custom_css():
             color: #f1f1f1;
         }
 
+        section[data-testid="stSidebar"] label {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        section[data-testid="stSidebar"] .stRadio > div {
+            gap: 1rem;
+        }
+
         /* Button styling */
         .stButton > button {
             background-color: #1f77b4;
@@ -81,11 +90,72 @@ def inject_custom_css():
         </style>
     """, unsafe_allow_html=True)
 
-
 def render_header():
     st.markdown("""
         <div class="custom-header">
-            <h1>📂 Bid Proposal Generator</h1>
-            <p>Your intelligent assistant for RFP analysis and proposal generation</p>
+            <h1>📂 Bid Preparation System</h1>
+            <p>Your intelligent assistant for bid proposal generation</p>
         </div>
     """, unsafe_allow_html=True)
+
+
+def render_sidebar_menu():
+    with st.sidebar:
+        st.markdown("""
+            <style>
+                .sidebar-title {
+                    font-size: 26px;
+                    font-weight: 700;
+                    color: #ffffff;
+                    margin-bottom: 0.5rem;
+                }
+                .sidebar-subtitle {
+                    font-size: 15px;
+                    color: #cccccc;
+                    margin-bottom: 1rem;
+                }
+                .info-box {
+                    background-color: rgba(255, 255, 255, 0.05);
+                    padding: 12px;
+                    border-radius: 10px;
+                    margin-bottom: 15px;
+                    border-left: 4px solid #3399ff;
+                    color: #e0e0e0;
+                    font-size: 15px;
+                }
+                .tip-box {
+                    background-color: rgba(102, 187, 106, 0.15);
+                    padding: 12px;
+                    border-radius: 10px;
+                    border-left: 4px solid #66bb6a;
+                    color: #e0e0e0;
+                    font-size: 14px;
+                }
+                .info-item {
+                    margin-top: 5px;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+
+        st.markdown('<div class="sidebar-title">The ABPSys</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-subtitle">Your AI-powered Bid companion</div>', unsafe_allow_html=True)
+
+        st.markdown("""
+            <div class="info-box">
+                <strong>What It Does:</strong><br>
+                    This tool helps you:
+                <div class="info-item">📄 Extract RFP requirements</div>
+                <div class="info-item">🔍 Find similar proposals</div>
+                <div class="info-item">🧠 Generate tailored methodologies</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+            <div class="tip-box">
+                📌 <strong>Usage Tip:</strong> Upload your RFP on the main screen to get started.<br>
+                📂 <strong>Supported Format:</strong> PDF only.
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("---")
+        st.markdown('<p style="color: #888888; font-size: 13px;">🛠️ Developed for research and prototyping purposes<br>📅 Version: May 2025</p>', unsafe_allow_html=True)
