@@ -11,6 +11,9 @@ from enhancements import inject_custom_css, render_header  # Import your functio
 # from dotenv import load_dotenv
 # load_dotenv()
 
+# Apply the enhancements
+inject_custom_css()
+render_header()
 
 # Initialize API Keys
 pinecone_key = os.environ.get("PINECONE_API_KEY")
