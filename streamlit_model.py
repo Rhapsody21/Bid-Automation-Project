@@ -425,7 +425,7 @@ import json
 import re
 from docx import Document
 from io import BytesIO
-from enhancements import inject_custom_css, render_header  # Import your functions
+from enhancements import inject_custom_css, render_header
 
 
 # Set up page configuration
