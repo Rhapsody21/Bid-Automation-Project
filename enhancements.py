@@ -118,7 +118,6 @@ def render_sidebar_menu():
                     background-color: rgba(255, 255, 255, 0.05);
                     padding: 12px;
                     border-radius: 10px;
-                    margin-bottom: 15px;
                     border-left: 4px solid #3399ff;
                     color: #e0e0e0;
                     font-size: 15px;
@@ -140,20 +139,24 @@ def render_sidebar_menu():
         st.markdown('<div class="sidebar-title">The ABPSys</div>', unsafe_allow_html=True)
         st.markdown('<div class="sidebar-subtitle">Your AI-powered Bid companion</div>', unsafe_allow_html=True)
 
+        
         st.markdown("""
-            <div class="info-box">
-                <strong>What It Does:</strong><br>
-                    This tool helps you:
-                <div class="info-item">📄 Extract RFP requirements</div>
-                <div class="info-item">🔍 Find similar proposals</div>
-                <div class="info-item">🧠 Generate tailored methodologies</div>
+            <div style="margin-bottom: 20px;">
+                <div class="tip-box">
+                    📌 <strong>Usage Tip:</strong> Upload your RFP on the main screen to get started.<br>
+                    📂 <strong>Supported Format:</strong> PDF only.
+                </div>
             </div>
         """, unsafe_allow_html=True)
 
+      
         st.markdown("""
-            <div class="tip-box">
-                📌 <strong>Usage Tip:</strong> Upload your RFP on the main screen to get started.<br>
-                📂 <strong>Supported Format:</strong> PDF only.
+            <div class="info-box">
+                <strong>What It Does:</strong><br>
+                This tool helps you:
+                <div class="info-item">📄 Step 1: Extract RFP requirements</div>
+                <div class="info-item">🔍 Step 2: Find similar proposals</div>
+                <div class="info-item">🧠 Step 3: Generate tailored methodologies</div>
             </div>
         """, unsafe_allow_html=True)
 
