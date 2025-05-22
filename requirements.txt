@@ -1,7 +1,6 @@
 openai
 langchain
-# pinecone
-pinecone-client>=3.0.0
+pinecone
 numpy
 pypdf
 langchain_community
