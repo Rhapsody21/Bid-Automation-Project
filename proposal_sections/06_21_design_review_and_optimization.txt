@@ -1,7 +1,0 @@
-#### 2.1 Design Review and Optimization
-
-- **Objective:** Ensure design compliance with international and local standards.
-- **Activities:**
-  - Review existing design documents to verify compliance with Ghanaian and international standards.
-  - Optimize design solutions to enhance efficiency and reliability of the transmission line.
-  - Collaborate with GRIDCo engineers to incorporate feedback and suggestions for improvements.

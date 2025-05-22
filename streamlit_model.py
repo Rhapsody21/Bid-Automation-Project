@@ -2,7 +2,8 @@ import os
 import streamlit as st
 import fitz  # PyMuPDF
 import openai
-from pinecone import Pinecone
+# from pinecone import Pinecone
+import pinecone
 import json
 import re
 from docx import Document
@@ -32,14 +33,13 @@ if not pinecone_key or not openai_key:
     st.stop()
 
 # Pinecone and OpenAI Initialization
-pc = Pinecone(api_key=pinecone_key, environment="us-east-1")
-index = pc.Index("bid-automation-index")
-client = openai.OpenAI(api_key=openai_key)
+# pc = Pinecone(api_key=pinecone_key, environment="us-east-1")
+# index = pc.Index("bid-automation-index")
 
-# Streamlit UI Setup
-# st.set_page_config(page_title="Bid Proposal Generator", layout="wide")
-# st.title("📂 Bid Proposal Generator")
-# Automated Bid Preparation System (ABPSys)
+pinecone.init(api_key="pinecone_key", environment="us-east-1")
+index = pinecone.Index("bid-automation-index")
+
+client = openai.OpenAI(api_key=openai_key)
 
 # Session State Defaults
 for key in ["requirements", "similar_proposals", "methodology_text", "detailed_sections"]:

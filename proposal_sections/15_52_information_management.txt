@@ -1,7 +1,0 @@
-#### 5.2 Information Management
-
-- **Objective:** Maintain accurate and accessible project documentation.
-- **Activities:**
-  - Utilize a centralized project management software for document storage and sharing.
-  - Ensure all project communications and documents are properly recorded and archived.
-  - Facilitate access to project information for authorized parties, ensuring data security and confidentiality.
