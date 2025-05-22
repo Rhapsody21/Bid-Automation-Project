@@ -1,13 +1,26 @@
 openai
 langchain
-pinecone
+pinecone==5.4.2
+langchain-pinecone
+langchain-openai
 numpy
-pypdf
-langchain_community
-langchain_openai
-langchain_pinecone  
-boto3
-PdfReader
 pypdf
 PyMuPDF
 python-docx
+boto3
+streamlit
+
+
+# openai
+# langchain
+# pinecone
+# numpy
+# pypdf
+# langchain_community
+# langchain_openai
+# langchain_pinecone  
+# boto3
+# PdfReader
+# pypdf
+# PyMuPDF
+# python-docx
