@@ -161,7 +161,7 @@ def render_sidebar_menu():
         """, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.markdown('<p style="color: #888888; font-size: 13px;">🛠️ Developed for research and prototyping purposes<br>📅 Version: May 2025</p>', unsafe_allow_html=True)
+        st.markdown('<p style="color: #888888; font-size: 13px;">🛠️ Developed as proof of concept (PoC) for research purposes<br>📅 Version: December 2025</p>', unsafe_allow_html=True)
 
 
 
